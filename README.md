@@ -14,3 +14,8 @@
 - There are some services in `src/service` folder to create custom terrain.
 
 - And also some utility  functions in `src/utility/tiff-utils.ts` file
+
+## Packages
+
+- Angular: 19
+- Cesium: 1.126.0
