@@ -77,6 +77,7 @@ export class AppComponent implements AfterViewInit {
           material,
           translucent: false,
         }),
+        asynchronous: false,
       })
     );
     console.log('Primitive added to scene');
