@@ -44,7 +44,7 @@ export class AppComponent implements AfterViewInit {
     this.viewer = new Cesium.Viewer('cesiumContainer', {
       // imageryProvider: false,
       baseLayerPicker: false,
-      // terrainProvider: await Cesium.createWorldTerrainAsync(),
+      terrainProvider: await Cesium.createWorldTerrainAsync(),
     });
     // enable pinch zoom
     this.viewer.scene.screenSpaceCameraController.enableZoom = true;
