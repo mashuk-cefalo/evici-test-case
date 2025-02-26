@@ -57,7 +57,7 @@ export const readDEMData = async (
   boundingBox: number[];
 }> => {
   const demImage = await loadTiff(demAsset);
-
+  console.log('DEM Image:', demImage);
   // Get DEM bounding box and dimensions
   const boundingBox = demImage.getBoundingBox(); // [west, south, east, north]
   const width = demImage.getWidth();
@@ -68,7 +68,7 @@ export const readDEMData = async (
     boundingBox[2],
     boundingBox[3]
   );
-  console.log('DEM:', boundingBox, width, height);
+  console.log('width: ', width, 'height: ', height, 'rectangle:', boundingBox);
 
   // Read DEM elevation values
   const demRaster = await demImage.readRasters({ samples: [0] });
@@ -86,8 +86,10 @@ export const readSatelliteData = async (
 ) => {
   // 2️⃣ Load Satellite TIFF (RGB Texture)
   const satImage = await loadTiff(satAsset);
-  console.log('Satellite:', satImage);
+  console.log('Satellite Image:', satImage);
 
+  width = satImage.getWidth();
+  height = satImage.getHeight();
   // Read RGB bands (4,3,2)
   const redBand = (await satImage.readRasters({
     samples: [3],
@@ -98,6 +100,10 @@ export const readSatelliteData = async (
   const blueBand = (await satImage.readRasters({
     samples: [1],
   })) as TypedArray[];
+
+  console.log('Red Band:', redBand[0].length, redBand[0].slice(0, 10));
+  console.log('Green Band:', greenBand[0].length, greenBand[0].slice(0, 10));
+  console.log('Blue Band:', blueBand[0].length, blueBand[0].slice(0, 10));
 
   // Create canvas to generate texture
   const canvas = document.createElement('canvas');
@@ -115,12 +121,20 @@ export const readSatelliteData = async (
   ctx.putImageData(imageData, 0, 0);
   const textureUrl = canvas.toDataURL('image/png');
 
+  /*
+  // see the texture
+  const img = document.createElement('img');
+  img.src = textureUrl;
+  img.style.maxWidth = '80vw';
+  img.style.maxHeight = '80vh';
+  document.body.appendChild(img);
+  */
   // 3️⃣ Create Cesium 3D Terrain Surface (Primitive)
   const positions: Cartesian3[] = [];
   const indices: number[] = [];
 
   // Normalize elevation (adjust scale if needed)
-  const scale = 1.0; // Adjust as needed
+  const scale = 2.0;
 
   // Generate 3D positions from heightmap
   for (let y = 0; y < height; y++) {
@@ -134,6 +148,14 @@ export const readSatelliteData = async (
       positions.push(Cartesian3.fromDegrees(lon, lat, elevation));
     }
   }
+  console.log(
+    'Positions:',
+    positions.length,
+    positions[0],
+    positions[1],
+    positions[positions.length - 2],
+    positions[positions.length - 1]
+  );
 
   // Create triangle indices
   for (let y = 0; y < height - 1; y++) {
@@ -169,9 +191,7 @@ export const readSatelliteData = async (
   const material = new Material({
     fabric: {
       type: 'Image',
-      uniforms: {
-        image: textureUrl,
-      },
+      uniforms: { image: textureUrl },
     },
   });
   console.log('Material:', material);
