@@ -3,6 +3,7 @@ declare global {
     CESIUM_BASE_URL: string;
   }
 }
+
 export const environment = {
   production: false,
   CESIUM_BASE_URL: '/assets/Cesium/',
