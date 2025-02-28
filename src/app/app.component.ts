@@ -242,9 +242,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       const height = image.getHeight();
       const rasterData = await image.readRasters();
       // For Sentinel-2: channels 4, 3, and 2 (indices 3, 2, 1) are used as R, G, B.
-      const channelR = rasterData[1];
+      const channelR = rasterData[3];
       const channelG = rasterData[2];
-      const channelB = rasterData[3];
+      const channelB = rasterData[1];
 
       // Create a canvas with the original image size.
       const canvas = document.createElement('canvas');
