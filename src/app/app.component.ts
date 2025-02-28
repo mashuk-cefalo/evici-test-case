@@ -1,10 +1,4 @@
-import {
-  Component,
-  OnInit,
-  AfterViewInit,
-  OnDestroy,
-  HostListener,
-} from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import * as THREE from 'three';
 // @ts-ignore
 import { fromArrayBuffer } from 'geotiff';
@@ -50,10 +44,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // These will store the global offset and scale factor.
   demOffset = { x: 0, y: 0 };
-  scaleFactor = 1; // This will be computed dynamically.
+  scaleFactor = 1; // Will be computed dynamically.
 
-  // Flag to show/hide the spinner.
+  // Spinner flag.
   loading: boolean = true;
+  loadingText: string = 'Loading assets...';
 
   constructor() {}
 
@@ -61,7 +56,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('Component initialization started.');
     try {
       // Load DEM and satellite image concurrently.
+      this.loadingText = 'Loading DEM...';
       const demResult = await this.loadDEM(demAsset);
+
+      this.loadingText = 'Loading satellite image...';
       const texture = await this.loadSatelliteImage(satelliteAsset);
 
       // Set extent based on DEM bounding box.
@@ -73,10 +71,12 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       this.satelliteTexture = texture;
       console.log(`DEM loaded: ${this.demWidth} x ${this.demHeight}`);
       console.log('Satellite texture loaded.');
-      // Now that we have the DEM data and a proper local extent, create the terrain mesh.
+      // Create the terrain mesh.
+      this.loadingText = 'Loading terrain...';
       this.createTerrainMesh();
-      // Hide the spinner once the mesh is loaded.
-      this.loading = false;
+      setTimeout(() => {
+        this.loading = false;
+      }, 3000);
     } catch (error) {
       console.error('Error loading assets:', error);
       this.loading = false;
@@ -84,27 +84,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    // Initialize the Three.js scene after the view is ready.
     this.initThree();
-    // Start the render loop to update controls.
     this.animate();
   }
 
   ngOnDestroy(): void {
     cancelAnimationFrame(this.animationId);
-    window.removeEventListener('resize', this.onWindowResize.bind(this));
     if (this.controls) this.controls.dispose();
-  }
-
-  // Handle window resize.
-  @HostListener('window:resize', ['$event'])
-  onWindowResize(event: Event): void {
-    if (this.camera && this.renderer) {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-      console.log('Window resized; updated camera and renderer.');
-    }
   }
 
   /**
@@ -119,7 +105,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       0.1,
       1000
     );
-    // Set a camera position that gives a good map view.
     this.camera.position.set(0, 150, 150);
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
@@ -133,16 +118,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     container.appendChild(this.renderer.domElement);
     console.log('Renderer appended to container.');
 
-    // Add ambient light.
+    // Add ambient light only.
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
     this.scene.add(ambientLight);
     console.log('Ambient light added to scene.');
-
-    // Add contrast light.
-    // const contrastLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    // contrastLight.position.set(-100, 100, -100);
-    // this.scene.add(contrastLight);
-    // console.log('Contrast light added to scene.');
 
     // Initialize OrbitControls for interactive map view.
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -152,12 +131,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     this.controls.maxDistance = 300;
     console.log('OrbitControls initialized.');
 
-    window.addEventListener('resize', this.onWindowResize.bind(this));
     console.log('Three.js scene initialization complete.');
   }
 
   /**
-   * Render loop: update the controls and render the scene.
+   * Render loop: update controls and render the scene.
    */
   animate(): void {
     this.animationId = requestAnimationFrame(() => this.animate());
@@ -166,7 +144,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Create the terrain mesh from the DEM data and apply the satellite texture.
+   * Create the terrain mesh from DEM data and apply the satellite texture.
    */
   createTerrainMesh(): void {
     console.log('Creating terrain mesh from DEM data...');
@@ -177,7 +155,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const gridWidth = this.demWidth;
     const gridHeight = this.demHeight;
-    // Compute spacing (dx, dy) in local coordinates based on our computed extent.
     const dx = (this.extent.maxX - this.extent.minX) / (gridWidth - 1);
     const dy = (this.extent.maxY - this.extent.minY) / (gridHeight - 1);
 
@@ -186,13 +163,12 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         `Grid dimensions: ${gridWidth} x ${gridHeight}, dx: ${dx}, dy: ${dy}`
     );
 
-    // Build vertices and UV coordinates.
-    // Each vertex is (localX, elevation, localZ) with Y as up.
+    // Create vertices and UVs.
     for (let j = 0; j < gridHeight; j++) {
       for (let i = 0; i < gridWidth; i++) {
         const localX = this.extent.minX + i * dx;
         const localZ = this.extent.minY + j * dy;
-        // Multiply elevation by a factor (e.g., 0.005) to adjust vertical exaggeration.
+        // Adjust elevation scale as needed.
         const elevation = this.demData[j * gridWidth + i] * 0.005;
         vertices.push(localX, elevation, localZ);
 
@@ -204,7 +180,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('Total vertices:', vertices.length / 3);
     console.log('UV sample start:', uvs.slice(0, 6), 'end:', uvs.slice(-6));
 
-    // Build indices (two triangles per grid cell).
+    // Build indices for triangles.
     for (let j = 0; j < gridHeight - 1; j++) {
       for (let i = 0; i < gridWidth - 1; i++) {
         const a = j * gridWidth + i;
@@ -227,8 +203,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const material = new THREE.MeshLambertMaterial({
       map: this.satelliteTexture,
-      // Optionally, adjust the material color to brighten the terrain.
-      color: 0xffffff,
+      color: 0xffffff, // Use white as base to let the texture's contrast show.
     });
     console.log('Material created with satellite texture.');
     this.mesh = new THREE.Mesh(geometry, material);
@@ -238,7 +213,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /**
    * Load DEM data from a TIFF file using GeoTIFF.
-   * Also attempts to read the bounding box from metadata.
+   * Also reads the bounding box from metadata.
    */
   async loadDEM(url: string): Promise<{
     data: Float32Array;
@@ -263,7 +238,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Load the satellite image from a TIFF file, extract RGB channels, and create a texture.
+   * Load the satellite image from a TIFF file, extract RGB channels, adjust contrast, and create a texture.
    */
   async loadSatelliteImage(url: string): Promise<THREE.Texture> {
     console.log(`Loading satellite image from ${url}...`);
@@ -282,10 +257,23 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       canvas.height = height;
       const ctx = canvas.getContext('2d')!;
       const imageData = ctx.createImageData(width, height);
+
+      // Set desired contrast value. (Range: -255 to 255; 0 means no change.)
+      const contrast = 0; // Adjust this value as needed.
+      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
       for (let i = 0; i < width * height; i++) {
-        imageData.data[i * 4] = channelR[i];
-        imageData.data[i * 4 + 1] = channelG[i];
-        imageData.data[i * 4 + 2] = channelB[i];
+        let r = channelR[i];
+        let g = channelG[i];
+        let b = channelB[i];
+        // Adjust contrast for each channel.
+        r = factor * (r - 128) + 128;
+        g = factor * (g - 128) + 128;
+        b = factor * (b - 128) + 128;
+        // Clamp values between 0 and 255.
+        imageData.data[i * 4] = Math.min(255, Math.max(0, r));
+        imageData.data[i * 4 + 1] = Math.min(255, Math.max(0, g));
+        imageData.data[i * 4 + 2] = Math.min(255, Math.max(0, b));
         imageData.data[i * 4 + 3] = 255;
       }
       ctx.putImageData(imageData, 0, 0);
