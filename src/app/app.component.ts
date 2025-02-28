@@ -1,9 +1,9 @@
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import * as THREE from 'three';
+import { OrbitControls } from 'three-stdlib';
+
 // @ts-ignore
 import { fromArrayBuffer } from 'geotiff';
-// @ts-ignore
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 const demAsset = 'assets/dem.tif';
 const satelliteAsset = 'assets/lunar.tiff';
@@ -67,9 +67,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       console.log('Satellite texture loaded.');
       // Create the terrain mesh.
       this.createTerrainMesh();
-      setTimeout(() => {
-        this.loading = false;
-      }, 3000);
+      this.loading = false;
     } catch (error) {
       console.error('Error loading assets:', error);
       this.loading = false;
