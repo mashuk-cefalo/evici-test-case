@@ -98,12 +98,7 @@ export const addImageToDom = (canvas: HTMLCanvasElement) => {
   document.body.appendChild(img);
 };
 
-/*
-export const readSatelliteData = async (
-  satAsset: string,
-  boundingBox: number[],
-  elevationData: TypedArray
-) => {
+export const readSatelliteData = async (satAsset: string) => {
   // 2️⃣ Load Satellite TIFF (RGB Texture)
   const satImage = await loadTiff(satAsset);
   console.log('Satellite Image:', satImage);
@@ -142,82 +137,5 @@ export const readSatelliteData = async (
   }
   ctx.putImageData(imageData, 0, 0);
   const textureUrl = canvas.toDataURL('image/png');
-
-  // see the texture
-  const img = document.createElement('img');
-  img.src = textureUrl;
-  img.style.maxWidth = '80vw';
-  img.style.maxHeight = '80vh';
-  img.style.marginTop = '40px';
-  document.body.appendChild(img);
-
-  // 3️⃣ Create Cesium 3D Terrain Surface (Primitive)
-  const positions: Cartesian3[] = [];
-  const indices: number[] = [];
-
-  // Normalize elevation (adjust scale if needed)
-  const scale = 2.0;
-
-  // Generate 3D positions from heightmap
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const lon =
-        boundingBox[0] + ((boundingBox[2] - boundingBox[0]) * x) / width;
-      const lat =
-        boundingBox[1] + ((boundingBox[3] - boundingBox[1]) * y) / height;
-      const elevation = elevationData[y * width + x] * scale;
-
-      positions.push(Cartesian3.fromDegrees(lon, lat, elevation));
-    }
-  }
-  console.log(
-    'Positions:',
-    positions.length,
-    positions[0],
-    positions[1],
-    positions[positions.length - 2],
-    positions[positions.length - 1]
-  );
-
-  // Create triangle indices
-  for (let y = 0; y < height - 1; y++) {
-    for (let x = 0; x < width - 1; x++) {
-      const i = y * width + x;
-      indices.push(i, i + 1, i + width);
-      indices.push(i + 1, i + width + 1, i + width);
-    }
-  }
-
-  // 🟡 Create Geometry
-  const geoValues = new Float64Array(positions.flatMap((p) => [p.x, p.y, p.z]));
-  console.log('geoValues', geoValues);
-
-  const geometry = new Geometry({
-    attributes: {
-      position: new GeometryAttribute({
-        componentDatatype: ComponentDatatype.DOUBLE,
-        componentsPerAttribute: 3,
-        values: geoValues,
-      }),
-      normal: undefined, // No need for normal calculation here
-      st: undefined, // Texture coordinates (optional, if you need UV mapping)
-      bitangent: undefined, // Not needed for basic geometry
-      tangent: undefined, // Not needed for basic geometry
-      color: undefined, // Not needed for this case
-    },
-    indices: new Uint16Array(indices),
-    primitiveType: PrimitiveType.TRIANGLES,
-  });
-
-  // Create Material from Texture
-  const material = new Material({
-    fabric: {
-      type: 'Image',
-      uniforms: { image: textureUrl },
-    },
-  });
-  console.log('Material:', material);
-  return { geometry, material };
+  addImageToDom(canvas);
 };
-
-*/

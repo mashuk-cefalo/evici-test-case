@@ -34,21 +34,17 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   animationId: number = 0;
 
   // DEM and satellite image data.
-  demData!: Float32Array;
+  demElevation!: Float32Array;
   demWidth!: number;
   demHeight!: number;
   satelliteTexture!: THREE.Texture;
 
   // Extent in local coordinates. Initially set to a default placeholder.
   extent = { minX: -50, maxX: 50, minY: -50, maxY: 50 };
-
-  // These will store the global offset and scale factor.
-  demOffset = { x: 0, y: 0 };
-  scaleFactor = 1; // Will be computed dynamically.
+  elevationFactor: number = 1 / 50;
 
   // Spinner flag.
   loading: boolean = true;
-  loadingText: string = 'Loading assets...';
 
   constructor() {}
 
@@ -56,23 +52,20 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('Component initialization started.');
     try {
       // Load DEM and satellite image concurrently.
-      this.loadingText = 'Loading DEM...';
       const demResult = await this.loadDEM(demAsset);
 
-      this.loadingText = 'Loading satellite image...';
       const texture = await this.loadSatelliteImage(satelliteAsset);
 
       // Set extent based on DEM bounding box.
       this.setExtent(demResult.boundingBox);
 
-      this.demData = demResult.data;
+      this.demElevation = demResult.data;
       this.demWidth = demResult.width;
       this.demHeight = demResult.height;
       this.satelliteTexture = texture;
       console.log(`DEM loaded: ${this.demWidth} x ${this.demHeight}`);
       console.log('Satellite texture loaded.');
       // Create the terrain mesh.
-      this.loadingText = 'Loading terrain...';
       this.createTerrainMesh();
       setTimeout(() => {
         this.loading = false;
@@ -118,8 +111,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     container.appendChild(this.renderer.domElement);
     console.log('Renderer appended to container.');
 
-    // Add ambient light only.
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+    // // Add ambient light only.
+    const ambientLight = new THREE.AmbientLight(0xffffff, 5.0);
     this.scene.add(ambientLight);
     console.log('Ambient light added to scene.');
 
@@ -128,7 +121,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.1;
     this.controls.minDistance = 50;
-    this.controls.maxDistance = 300;
+    this.controls.maxDistance = 1000;
     console.log('OrbitControls initialized.');
 
     console.log('Three.js scene initialization complete.');
@@ -169,7 +162,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         const localX = this.extent.minX + i * dx;
         const localZ = this.extent.minY + j * dy;
         // Adjust elevation scale as needed.
-        const elevation = this.demData[j * gridWidth + i] * 0.005;
+        const elevation =
+          this.demElevation[j * gridWidth + i] * this.elevationFactor;
         vertices.push(localX, elevation, localZ);
 
         const u = i / (gridWidth - 1);
@@ -248,39 +242,82 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       const height = image.getHeight();
       const rasterData = await image.readRasters();
       // For Sentinel-2: channels 4, 3, and 2 (indices 3, 2, 1) are used as R, G, B.
-      const channelR = rasterData[3];
+      const channelR = rasterData[1];
       const channelG = rasterData[2];
-      const channelB = rasterData[1];
+      const channelB = rasterData[3];
 
+      // Create a canvas with the original image size.
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d')!;
       const imageData = ctx.createImageData(width, height);
 
-      // Set desired contrast value. (Range: -255 to 255; 0 means no change.)
-      const contrast = 0; // Adjust this value as needed.
-      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+      let redMin = 255,
+        redMax = 0,
+        greenMin = 255,
+        greenMax = 0,
+        blueMin = 255,
+        blueMax = 0;
 
       for (let i = 0; i < width * height; i++) {
         let r = channelR[i];
         let g = channelG[i];
         let b = channelB[i];
-        // Adjust contrast for each channel.
-        r = factor * (r - 128) + 128;
-        g = factor * (g - 128) + 128;
-        b = factor * (b - 128) + 128;
-        // Clamp values between 0 and 255.
-        imageData.data[i * 4] = Math.min(255, Math.max(0, r));
-        imageData.data[i * 4 + 1] = Math.min(255, Math.max(0, g));
-        imageData.data[i * 4 + 2] = Math.min(255, Math.max(0, b));
-        imageData.data[i * 4 + 3] = 255;
+        // Track min/max values for each channel.
+        redMin = Math.min(redMin, r);
+        redMax = Math.max(redMax, r);
+        greenMin = Math.min(greenMin, g);
+        greenMax = Math.max(greenMax, g);
+        blueMin = Math.min(blueMin, b);
+        blueMax = Math.max(blueMax, b);
       }
+
+      const redAspect = (redMax - redMin) / 255;
+      const greenAspect = (greenMax - greenMin) / 255;
+      const blueAspect = (blueMax - blueMin) / 255;
+      for (let i = 0; i < width * height; i++) {
+        let r = (channelR[i] - redMin) / redAspect;
+        let g = (channelG[i] - greenMin) / greenAspect;
+        let b = (channelB[i] - blueMin) / blueAspect;
+
+        imageData.data[i * 4] = r;
+        imageData.data[i * 4 + 1] = g;
+        imageData.data[i * 4 + 2] = b;
+        imageData.data[i * 4 + 3] = 255;
+
+        // Track min/max values for each channel.
+        redMin = Math.min(redMin, r);
+        redMax = Math.max(redMax, r);
+        greenMin = Math.min(greenMin, g);
+        greenMax = Math.max(greenMax, g);
+        blueMin = Math.min(blueMin, b);
+        blueMax = Math.max(blueMax, b);
+      }
+
+      console.log('Red min/max:', redMin, redMax);
+      console.log('Green min/max:', greenMin, greenMax);
+      console.log('Blue min/max:', blueMin, blueMax);
       ctx.putImageData(imageData, 0, 0);
       console.log('Satellite image processed into canvas.');
-      // Optionally, attach the canvas to the DOM for debugging.
-      addImageToDom(canvas);
-      const texture = new THREE.CanvasTexture(canvas);
+
+      // Resize the canvas to 70% of the window's innerWidth while preserving aspect ratio.
+      const desiredWidth = window.innerWidth * 0.7;
+      const scale = desiredWidth / canvas.width;
+      const desiredHeight = canvas.height * scale;
+      const resizedCanvas = document.createElement('canvas');
+      resizedCanvas.width = desiredWidth;
+      resizedCanvas.height = desiredHeight;
+      const resizedCtx = resizedCanvas.getContext('2d')!;
+      resizedCtx.drawImage(canvas, 0, 0, desiredWidth, desiredHeight);
+      console.log(
+        `Resized satellite image to ${desiredWidth} x ${desiredHeight}`
+      );
+
+      // Optionally, attach the resized canvas to the DOM for debugging.
+      addImageToDom(resizedCanvas);
+
+      const texture = new THREE.CanvasTexture(resizedCanvas);
       texture.needsUpdate = true;
       return texture;
     } catch (error) {
