@@ -1,5 +1,5 @@
 export interface DEMResponse {
-  elevations: Float32Array;
+  elevations: number[];
   width: number;
   height: number;
   rectangle: Rectangle;

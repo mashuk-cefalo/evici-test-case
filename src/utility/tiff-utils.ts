@@ -3,6 +3,7 @@ import { CanvasTexture, Texture } from 'three';
 import { fromArrayBuffer, GeoTIFFImage } from 'geotiff';
 import { DEMResponse } from './types';
 import { getRectangleFromBox, minMaxFromRaster } from './utils';
+import { maxElevation, maxSatelliteImage } from '../../environment';
 
 const loadTiff = async (url: string): Promise<GeoTIFFImage> => {
   try {
@@ -39,11 +40,11 @@ export const loadDEMData = async (url: string): Promise<DEMResponse> => {
     const width = image.getWidth();
     const height = image.getHeight();
     const rasterData = await image.readRasters({ interleave: true });
-    const elevations = new Float32Array(rasterData);
-
+    const [min, max, elevations] = minMaxFromRaster(rasterData);
+    const factor = (max - min) / maxElevation;
     console.log(`DEM loaded with dimensions: ${width} x ${height}`);
     return {
-      elevations,
+      elevations: elevations.map((elevation) => (elevation - min) / factor), // normalize elevation between 0 and maxElevation
       width,
       height,
       rectangle: getRectangleFromBox(image.getBoundingBox()),
@@ -55,17 +56,22 @@ export const loadDEMData = async (url: string): Promise<DEMResponse> => {
 };
 
 export const loadSatelliteImage = async (url: string): Promise<Texture> => {
-  const maxCanvasWidth = window.innerWidth * 0.7;
+  const maxCanvasWidth = window.innerWidth * maxSatelliteImage;
   console.log(`Loading satellite image from ${url}...`);
   try {
     const image = await loadTiff(url);
     const width = image.getWidth();
     const height = image.getHeight();
     const rasterData = await image.readRasters();
+
     // For Sentinel-2: channels 4, 3, and 2 (indices 3, 2, 1) are used as R, G, B.
-    const channelR = rasterData[3];
-    const channelG = rasterData[2];
-    const channelB = rasterData[1];
+    const [redMin, redMax, red] = minMaxFromRaster(rasterData[3]);
+    const [greenMin, greenMax, green] = minMaxFromRaster(rasterData[2]);
+    const [blueMin, blueMax, blue] = minMaxFromRaster(rasterData[1]);
+
+    const redFactor = (redMax - redMin) / 255;
+    const greenFactor = (greenMax - greenMin) / 255;
+    const blueFactor = (blueMax - blueMin) / 255;
 
     // Create a canvas with the original image size.
     const canvas = document.createElement('canvas');
@@ -73,26 +79,11 @@ export const loadSatelliteImage = async (url: string): Promise<Texture> => {
     canvas.height = height;
     const ctx = canvas.getContext('2d')!;
     const imageData = ctx.createImageData(width, height);
-    const [redMin, redMax] = minMaxFromRaster(channelR);
-    const [greenMin, greenMax] = minMaxFromRaster(channelG);
-    const [blueMin, blueMax] = minMaxFromRaster(channelB);
-
-    console.log('Red min/max:', redMin, redMax);
-    console.log('Green min/max:', greenMin, greenMax);
-    console.log('Blue min/max:', blueMin, blueMax);
-
-    const redAspect = (redMax - redMin) / 255;
-    const greenAspect = (greenMax - greenMin) / 255;
-    const blueAspect = (blueMax - blueMin) / 255;
 
     for (let i = 0; i < width * height; i++) {
-      const r = (channelR[i] - redMin) / redAspect;
-      const g = (channelG[i] - greenMin) / greenAspect;
-      const b = (channelB[i] - blueMin) / blueAspect;
-
-      imageData.data[i * 4] = r;
-      imageData.data[i * 4 + 1] = g;
-      imageData.data[i * 4 + 2] = b;
+      imageData.data[i * 4] = (red[i] - redMin) / redFactor;
+      imageData.data[i * 4 + 1] = (green[i] - greenMin) / greenFactor;
+      imageData.data[i * 4 + 2] = (blue[i] - blueMin) / blueFactor;
       imageData.data[i * 4 + 3] = 255;
     }
 

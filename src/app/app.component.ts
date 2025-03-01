@@ -2,7 +2,7 @@ import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 
-import { demAsset, elevationFactor, satelliteAsset } from '../../environment';
+import { demAsset, satelliteAsset } from '../../environment';
 import { loadDEMData, loadSatelliteImage } from '../utility/tiff-utils';
 import { Rectangle } from '../utility/types';
 
@@ -21,7 +21,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   animationId: number = 0;
 
   // DEM and satellite image data.
-  demElevation!: Float32Array;
+  demElevation!: number[];
   demWidth!: number;
   demHeight!: number;
   satelliteTexture!: THREE.Texture;
@@ -153,9 +153,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       for (let i = 0; i < gridWidth; i++) {
         const localX = this.rectangle.minX + i * dx;
         const localZ = this.rectangle.minY + j * dy;
+
         // Adjust elevation scale as needed.
-        const elevation =
-          this.demElevation[j * gridWidth + i] * elevationFactor;
+        const elevation = this.demElevation[j * gridWidth + i];
         vertices.push(localX, elevation, localZ);
 
         const u = i / (gridWidth - 1);
