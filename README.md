@@ -42,7 +42,7 @@ npm run start
 
 ## Screenshots
 
-![Demo](/screenshots/evici-test-case.mp4)
+- Demo: [Link](https://github.com/mashuk-cefalo/evici-test-case/blob/main/screenshots/evici-test-case.mp4)
 
 ![screenshot](/screenshots/1.png?raw=true)
 
