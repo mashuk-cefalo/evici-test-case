@@ -5,11 +5,13 @@ import { OrbitControls } from 'three-stdlib';
 import { demAsset, satelliteAsset } from '../../environment';
 import { loadDEMData, loadSatelliteImage } from '../utility/tiff-utils';
 import { Rectangle } from '../utility/types';
+import { SpinnerComponent } from './components/spinner/spinner.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
+  imports: [SpinnerComponent],
 })
 export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   // Three.js essentials.
@@ -92,9 +94,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       60,
       window.innerWidth / window.innerHeight,
       0.1,
-      2000
+      1000
     );
-    this.camera.position.set(0, 150, 250);
+    this.camera.position.set(0, 150, 50);
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -118,6 +120,14 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     this.controls.dampingFactor = 0.1;
     this.controls.minDistance = 50;
     this.controls.maxDistance = 1000;
+    this.controls.enablePan = true;
+    this.controls.screenSpacePanning = true; // Allows panning in screen space.
+    this.controls.mouseButtons = {
+      LEFT: THREE.MOUSE.PAN,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.ROTATE,
+    };
+
     console.log('OrbitControls initialized.');
 
     console.log('Three.js scene initialization complete.');
