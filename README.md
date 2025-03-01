@@ -2,6 +2,8 @@
 
 This is a test project to create a 3d terrain with  two tiff files, one with 1-channel elevation data, called a DEM (Digital Elevation Model), and another which is a Sentinel-2 satellite image with 12 channels, including RGB channels (channels 4,3 and 2 respectively).
 
+We can zoom, rotate or pan the 3d model.
+
 ## Approaches
 
 - Read single array `DEM` data as elevation from the `DEM` file
@@ -31,6 +33,12 @@ npm run start
 - `tiff-utils` utility function is used to extract data from both the `tiff` files.
 
 - The `map service` is used to initialize three js map. And then blend all data to show the maps.
+
+- `environment` file to keep the constant
+    - demAsset: Path to the DEM file.
+    - satelliteAsset: Path to the satellite image file.
+    - maxElevation: Maximum elevation value for the terrain.
+    - maxSatelliteImage: Maximum width for the satellite image wrt window width.
 
 ## Screenshots
 
