@@ -16,7 +16,7 @@ export class SpinnerComponent implements OnInit, OnDestroy {
       } else {
         this.dots.set(this.dots() + '.');
       }
-    }, 100);
+    }, 300);
   }
 
   ngOnDestroy(): void {
