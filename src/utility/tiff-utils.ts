@@ -1,93 +1,23 @@
-// import {
-//   Cartesian3,
-//   ComponentDatatype,
-//   Geometry,
-//   GeometryAttribute,
-//   Material,
-//   PrimitiveType,
-//   Rectangle,
-// } from 'cesium';
-
+import { CanvasTexture, Texture } from 'three';
 // @ts-ignore
-import { fromArrayBuffer, GeoTIFFImage, TypedArray } from 'geotiff';
+import { fromArrayBuffer, GeoTIFFImage } from 'geotiff';
+import { DEMResponse } from './types';
+import { getRectangleFromBox, minMaxFromRaster } from './utils';
 
-export async function loadTiff(url: string): Promise<GeoTIFFImage> {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  const tiff = await fromArrayBuffer(arrayBuffer);
-  return await tiff.getImage();
-}
-
-export function createImageFromData(
-  rData: Uint8Array,
-  gData: Uint8Array,
-  bData: Uint8Array,
-  width: number,
-  height: number
-): string {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-  if (!context) {
-    throw new Error('Unable to get canvas rendering context');
+const loadTiff = async (url: string): Promise<GeoTIFFImage> => {
+  try {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const tiff = await fromArrayBuffer(arrayBuffer);
+    const image = await tiff.getImage();
+    return image;
+  } catch (error) {
+    console.error('Error loading TIFF:', error);
+    throw error;
   }
-
-  const dataLength = width * height * 4;
-  const imageDataArray = new Uint8ClampedArray(dataLength);
-
-  for (let i = 0, j = 0; i < dataLength; i += 4, j++) {
-    imageDataArray[i] = rData[j]; // Red
-    imageDataArray[i + 1] = gData[j]; // Green
-    imageDataArray[i + 2] = bData[j]; // Blue
-    imageDataArray[i + 3] = 255; // Alpha
-  }
-
-  const imageData = new ImageData(imageDataArray, width, height);
-  context.putImageData(imageData, 0, 0);
-
-  return canvas.toDataURL('image/png');
-}
-
-export const readDEMData = async (
-  demAsset: string
-): Promise<{
-  width: number;
-  height: number;
-  elevationData: TypedArray;
-  // rectangle: Rectangle;
-  boundingBox: number[];
-  demData2: Float32Array;
-}> => {
-  const demImage = await loadTiff(demAsset);
-  console.log('DEM Image:', demImage);
-  // Get DEM bounding box and dimensions
-  const boundingBox = demImage.getBoundingBox(); // [west, south, east, north]
-  const width = demImage.getWidth();
-  const height = demImage.getHeight();
-  // const rectangle = Rectangle.fromDegrees(
-  //   boundingBox[0],
-  //   boundingBox[1],
-  //   boundingBox[2],
-  //   boundingBox[3]
-  // );
-  console.log('width: ', width, 'height: ', height, 'rectangle:', boundingBox);
-  console.log(
-    'Difference in width and height:',
-    boundingBox[2] - boundingBox[0],
-    boundingBox[3] - boundingBox[1]
-  );
-  // Read DEM elevation values
-  const demRaster = await demImage.readRasters({ samples: [0] });
-  const elevationData = demRaster[0] as TypedArray;
-  console.log('Elevation Data:', elevationData);
-
-  const data = await demImage.readRasters({ interleave: true });
-  const demData2 = new Float32Array(data as ArrayBuffer);
-  console.log('DEM Data2:', demData2, data);
-  return { width, height, boundingBox, elevationData, demData2 };
 };
 
+//  helper to display the processed satellite image.
 export const addImageToDom = (canvas: HTMLCanvasElement) => {
   const url = canvas.toDataURL('image/png');
   const img = document.createElement('img');
@@ -98,44 +28,100 @@ export const addImageToDom = (canvas: HTMLCanvasElement) => {
   document.body.appendChild(img);
 };
 
-export const readSatelliteData = async (satAsset: string) => {
-  // 2️⃣ Load Satellite TIFF (RGB Texture)
-  const satImage = await loadTiff(satAsset);
-  console.log('Satellite Image:', satImage);
+/**
+ * Load DEM data from a TIFF file using GeoTIFF.
+ * Also reads the bounding box from metadata.
+ */
+export const loadDEMData = async (url: string): Promise<DEMResponse> => {
+  console.log(`Loading DEM from ${url}...`);
+  try {
+    const image = await loadTiff(url);
+    const width = image.getWidth();
+    const height = image.getHeight();
+    const rasterData = await image.readRasters({ interleave: true });
+    const elevations = new Float32Array(rasterData);
 
-  const width = satImage.getWidth();
-  const height = satImage.getHeight();
-  console.log('satellite width: ', width, 'height: ', height);
-
-  // Read RGB bands (4,3,2)
-  const redBand = (await satImage.readRasters({
-    samples: [3],
-  })) as TypedArray[];
-  const greenBand = (await satImage.readRasters({
-    samples: [2],
-  })) as TypedArray[];
-  const blueBand = (await satImage.readRasters({
-    samples: [1],
-  })) as TypedArray[];
-
-  console.log('Red Band:', redBand[0].length, redBand[0].slice(0, 10));
-  console.log('Green Band:', greenBand[0].length, greenBand[0].slice(0, 10));
-  console.log('Blue Band:', blueBand[0].length, blueBand[0].slice(0, 10));
-
-  // Create canvas to generate texture
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-  const imageData = ctx.createImageData(width, height);
-
-  for (let i = 0; i < width * height; i++) {
-    imageData.data[i * 4] = redBand[0][i];
-    imageData.data[i * 4 + 1] = greenBand[0][i];
-    imageData.data[i * 4 + 2] = blueBand[0][i];
-    imageData.data[i * 4 + 3] = 255;
+    console.log(`DEM loaded with dimensions: ${width} x ${height}`);
+    return {
+      elevations,
+      width,
+      height,
+      rectangle: getRectangleFromBox(image.getBoundingBox()),
+    };
+  } catch (error) {
+    console.error('Error loading DEM:', error);
+    throw error;
   }
-  ctx.putImageData(imageData, 0, 0);
-  const textureUrl = canvas.toDataURL('image/png');
-  addImageToDom(canvas);
+};
+
+export const loadSatelliteImage = async (url: string): Promise<Texture> => {
+  const maxCanvasWidth = window.innerWidth * 0.7;
+  console.log(`Loading satellite image from ${url}...`);
+  try {
+    const image = await loadTiff(url);
+    const width = image.getWidth();
+    const height = image.getHeight();
+    const rasterData = await image.readRasters();
+    // For Sentinel-2: channels 4, 3, and 2 (indices 3, 2, 1) are used as R, G, B.
+    const channelR = rasterData[3];
+    const channelG = rasterData[2];
+    const channelB = rasterData[1];
+
+    // Create a canvas with the original image size.
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    const imageData = ctx.createImageData(width, height);
+    const [redMin, redMax] = minMaxFromRaster(channelR);
+    const [greenMin, greenMax] = minMaxFromRaster(channelG);
+    const [blueMin, blueMax] = minMaxFromRaster(channelB);
+
+    console.log('Red min/max:', redMin, redMax);
+    console.log('Green min/max:', greenMin, greenMax);
+    console.log('Blue min/max:', blueMin, blueMax);
+
+    const redAspect = (redMax - redMin) / 255;
+    const greenAspect = (greenMax - greenMin) / 255;
+    const blueAspect = (blueMax - blueMin) / 255;
+
+    for (let i = 0; i < width * height; i++) {
+      const r = (channelR[i] - redMin) / redAspect;
+      const g = (channelG[i] - greenMin) / greenAspect;
+      const b = (channelB[i] - blueMin) / blueAspect;
+
+      imageData.data[i * 4] = r;
+      imageData.data[i * 4 + 1] = g;
+      imageData.data[i * 4 + 2] = b;
+      imageData.data[i * 4 + 3] = 255;
+    }
+
+    console.log('Red min/max:', redMin, redMax);
+    console.log('Green min/max:', greenMin, greenMax);
+    console.log('Blue min/max:', blueMin, blueMax);
+    ctx.putImageData(imageData, 0, 0);
+    console.log('Satellite image processed into canvas.');
+
+    // Resize the canvas to 70% of the window's innerWidth while preserving aspect ratio.
+    const scale = maxCanvasWidth / canvas.width;
+    const desiredHeight = canvas.height * scale;
+    const resizedCanvas = document.createElement('canvas');
+    resizedCanvas.width = maxCanvasWidth;
+    resizedCanvas.height = desiredHeight;
+    const resizedCtx = resizedCanvas.getContext('2d')!;
+    resizedCtx.drawImage(canvas, 0, 0, maxCanvasWidth, desiredHeight);
+    console.log(
+      `Resized satellite image to ${maxCanvasWidth} x ${desiredHeight}`
+    );
+
+    // Optionally, attach the resized canvas to the DOM for debugging.
+    addImageToDom(resizedCanvas);
+
+    const texture = new CanvasTexture(resizedCanvas);
+    texture.needsUpdate = true;
+    return texture;
+  } catch (error) {
+    console.error('Error loading satellite image:', error);
+    throw error;
+  }
 };
