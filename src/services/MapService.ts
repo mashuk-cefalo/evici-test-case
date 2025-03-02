@@ -118,8 +118,8 @@ export class MapService {
     const { minX, maxX, minY, maxY } = rectangle;
 
     console.log('Creating terrain mesh from DEM data...');
-    // Create vertices, UVs, and indices for the terrain mesh.
-    const vertices: number[] = [];
+    // Create positions, UVs, and indices for the terrain mesh.
+    const positions: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
 
@@ -130,46 +130,56 @@ export class MapService {
       `Using local rectangle: [${minX}, ${minY}, ${maxX}, ${maxY}]. Grid dimensions: ${width} x ${height}, dx: ${dx}, dy: ${dy}`
     );
 
-    // Create vertices and UVs.
-    for (let j = 0; j < height; j++) {
-      for (let i = 0; i < width; i++) {
-        const localX = minX + i * dx;
-        const localZ = minY + j * dy;
-        const elevation = elevations[j * width + i];
-        vertices.push(localX, elevation, localZ);
+    // Create positions and UVs.
+    for (let h = 0; h < height; h++) {
+      for (let w = 0; w < width; w++) {
+        // Calculate the local X and Z coordinates based on the grid position.
+        const localX = minX + w * dx;
+        const localZ = minY + h * dy;
+        // Get the elevation value from the DEM data.
+        const elevation = elevations[h * width + w];
+        // Add the vertex position to the position array.
+        positions.push(localX, elevation, localZ);
 
-        // Normalize uvs to [0, 1].
-        const u = i / (width - 1);
-        const v = 1 - j / (height - 1);
+        // Normalize UV coordinates to the range [0, 1].
+        const u = w / (width - 1);
+        const v = 1 - h / (height - 1);
         uvs.push(u, v);
       }
     }
-    console.log('Total vertices:', vertices.length / 3);
+    console.log('Total vertices:', positions.length / 3);
 
     // Build indices for triangles.
-    for (let j = 0; j < height - 1; j++) {
-      for (let i = 0; i < width - 1; i++) {
-        const a = j * width + i;
-        const b = j * width + i + 1;
-        const c = (j + 1) * width + i;
-        const d = (j + 1) * width + i + 1;
+    for (let h = 0; h < height - 1; h++) {
+      for (let w = 0; w < width - 1; w++) {
+        // Calculate the indices of the four corners of the current grid cell.
+        const a = h * width + w;
+        const b = h * width + w + 1;
+        const c = (h + 1) * width + w;
+        const d = (h + 1) * width + w + 1;
+        // Create two triangles for the current grid cell.
         indices.push(a, c, b);
         indices.push(b, c, d);
       }
     }
     console.log('Total triangles:', indices.length / 3);
 
+    // Create a BufferGeometry object and set its attributes.
     const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
     geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
-    // Create a texture from the satellite image.
+    // Create a texture from the provided satellite canvas.
     const texture = new CanvasTexture(canvas);
     texture.needsUpdate = true;
+
+    // Create a MeshLambertMaterial with the texture.
     const material = new MeshLambertMaterial({ map: texture });
     console.log('Material created with satellite texture.');
+
+    // Create a MeshLambertMaterial with the texture.
     this.mesh = new Mesh(geometry, material);
     this.scene.add(this.mesh);
     console.log('Terrain mesh added to scene.');
