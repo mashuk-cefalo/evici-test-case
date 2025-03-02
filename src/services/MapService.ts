@@ -115,33 +115,30 @@ export class MapService {
     canvas: HTMLCanvasElement
   ): Promise<void> {
     const { elevations, width, height, rectangle } = DEMResponse;
-
-    const texture = new CanvasTexture(canvas);
-    texture.needsUpdate = true;
+    const { minX, maxX, minY, maxY } = rectangle;
 
     console.log('Creating terrain mesh from DEM data...');
-    const geometry = new BufferGeometry();
+    // Create vertices, UVs, and indices for the terrain mesh.
     const vertices: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
 
-    const dx = (rectangle.maxX - rectangle.minX) / (width - 1);
-    const dy = (rectangle.maxY - rectangle.minY) / (height - 1);
+    const dx = (maxX - minX) / (width - 1);
+    const dy = (maxY - minY) / (height - 1);
 
     console.log(
-      `Using local extent: [${rectangle.minX}, ${rectangle.minY}, ${rectangle.maxX}, ${rectangle.maxY}]. Grid dimensions: ${width} x ${height}, dx: ${dx}, dy: ${dy}`
+      `Using local rectangle: [${minX}, ${minY}, ${maxX}, ${maxY}]. Grid dimensions: ${width} x ${height}, dx: ${dx}, dy: ${dy}`
     );
 
     // Create vertices and UVs.
     for (let j = 0; j < height; j++) {
       for (let i = 0; i < width; i++) {
-        const localX = rectangle.minX + i * dx;
-        const localZ = rectangle.minY + j * dy;
-
-        // Adjust elevation scale as needed.
+        const localX = minX + i * dx;
+        const localZ = minY + j * dy;
         const elevation = elevations[j * width + i];
         vertices.push(localX, elevation, localZ);
 
+        // Normalize uvs to [0, 1].
         const u = i / (width - 1);
         const v = 1 - j / (height - 1);
         uvs.push(u, v);
@@ -162,14 +159,16 @@ export class MapService {
     }
     console.log('Total triangles:', indices.length / 3);
 
+    const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
-    const material = new MeshLambertMaterial({
-      map: texture,
-    });
+    // Create a texture from the satellite image.
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    const material = new MeshLambertMaterial({ map: texture });
     console.log('Material created with satellite texture.');
     this.mesh = new Mesh(geometry, material);
     this.scene.add(this.mesh);
