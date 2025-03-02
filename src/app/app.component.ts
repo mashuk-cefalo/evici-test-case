@@ -2,7 +2,7 @@ import { AfterViewInit, Component, OnDestroy } from '@angular/core';
 
 import { demAsset, satelliteAsset } from '../../environment';
 import { MapService } from '../services/MapService';
-import { loadDEMData, loadSatelliteImage } from '../utility/tiff-utils';
+import { loadDEMData, loadSatelliteCanvas } from '../utility/tiff-utils';
 import { SpinnerComponent } from './components/spinner/spinner.component';
 
 @Component({
@@ -29,13 +29,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         } ms.`
       );
 
-      const texture = await loadSatelliteImage(satelliteAsset);
+      const canvas = await loadSatelliteCanvas(satelliteAsset);
       const satelliteTime = Date.now();
       console.log(
         `Satellite image loaded in ${(satelliteTime - demTime) / 1000}s.`
       );
-      // rendering the terrain mesh with the DEM and satellite texture.
-      await this.mapService.renderMesh(demResult, texture);
+      // rendering the terrain mesh with the DEM and satellite canvas.
+      await this.mapService.renderMesh(demResult, canvas);
 
       console.log(
         `Terrain mesh created in ${

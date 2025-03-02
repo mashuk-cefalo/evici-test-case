@@ -55,7 +55,9 @@ export const loadDEMData = async (url: string): Promise<DEMResponse> => {
   }
 };
 
-export const loadSatelliteImage = async (url: string): Promise<Texture> => {
+export const loadSatelliteCanvas = async (
+  url: string
+): Promise<HTMLCanvasElement> => {
   const maxCanvasWidth = window.innerWidth * maxSatelliteImage;
   console.log(`Loading satellite image from ${url}...`);
   try {
@@ -106,11 +108,9 @@ export const loadSatelliteImage = async (url: string): Promise<Texture> => {
     );
 
     // Optionally, attach the resized canvas to the DOM for debugging.
-    addImageToDom(resizedCanvas);
+    // addImageToDom(resizedCanvas);
 
-    const texture = new CanvasTexture(resizedCanvas);
-    texture.needsUpdate = true;
-    return texture;
+    return resizedCanvas;
   } catch (error) {
     console.error('Error loading satellite image:', error);
     throw error;

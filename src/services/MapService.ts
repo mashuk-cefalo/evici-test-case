@@ -1,6 +1,7 @@
 import {
   AmbientLight,
   BufferGeometry,
+  CanvasTexture,
   Float32BufferAttribute,
   Mesh,
   MeshLambertMaterial,
@@ -109,8 +110,15 @@ export class MapService {
     console.log('OrbitControls initialized.');
   }
 
-  async renderMesh(DEMResponse: DEMResponse, texture: Texture): Promise<void> {
+  async renderMesh(
+    DEMResponse: DEMResponse,
+    canvas: HTMLCanvasElement
+  ): Promise<void> {
     const { elevations, width, height, rectangle } = DEMResponse;
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
     console.log('Creating terrain mesh from DEM data...');
     const geometry = new BufferGeometry();
     const vertices: number[] = [];
