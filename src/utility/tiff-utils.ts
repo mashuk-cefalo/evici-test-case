@@ -1,4 +1,3 @@
-import { CanvasTexture, Texture } from 'three';
 // @ts-ignore
 import { fromArrayBuffer, GeoTIFFImage } from 'geotiff';
 import { DEMResponse } from './types';
@@ -55,6 +54,11 @@ export const loadDEMData = async (url: string): Promise<DEMResponse> => {
   }
 };
 
+/**
+ * Load a satellite image from a TIFF file using GeoTIFF.
+ * The image is processed and resized to fit the window width.
+ * Returns a canvas element with the processed image.
+ */
 export const loadSatelliteCanvas = async (
   url: string
 ): Promise<HTMLCanvasElement> => {
