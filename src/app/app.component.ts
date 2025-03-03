@@ -20,6 +20,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     console.log('Component initialization started.');
     try {
       this.mapService = new MapService('mapContainer');
+
       // Load DEM and satellite image
       const demResult = await loadDEMData(demAsset);
       const demTime = Date.now();

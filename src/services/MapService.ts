@@ -105,7 +105,7 @@ export class MapService {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.1;
-    this.controls.minDistance = 50;
+    this.controls.minDistance = 5; // Minimum distance from the zoom out.
     this.controls.maxDistance = 1000;
     this.controls.enablePan = true;
     this.controls.screenSpacePanning = true; // Allows panning in screen space.

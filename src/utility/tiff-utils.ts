@@ -114,7 +114,7 @@ export const loadSatelliteCanvas = async (
     // Optionally, attach the resized canvas to the DOM for debugging.
     // addImageToDom(resizedCanvas);
 
-    return resizedCanvas;
+    return canvas;
   } catch (error) {
     console.error('Error loading satellite image:', error);
     throw error;
