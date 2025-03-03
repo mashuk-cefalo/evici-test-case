@@ -5,15 +5,18 @@ import { getRectangleFromBox, minMaxFromRaster } from './utils';
 import { maxElevation, maxSatelliteImage } from '../../environment';
 
 const loadTiff = async (url: string): Promise<GeoTIFFImage> => {
+  let buffer: ArrayBuffer;
   try {
     const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    const tiff = await fromArrayBuffer(arrayBuffer);
+    buffer = await response.arrayBuffer();
+    const tiff = await fromArrayBuffer(buffer);
     const image = await tiff.getImage();
     return image;
   } catch (error) {
     console.error('Error loading TIFF:', error);
     throw error;
+  } finally {
+    URL.revokeObjectURL(url);
   }
 };
 
@@ -28,6 +31,22 @@ export const addImageToDom = (canvas: HTMLCanvasElement) => {
   document.body.appendChild(img);
 };
 
+export const resizeCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
+  const maxCanvasWidth = window.innerWidth * maxSatelliteImage;
+  // Resize the canvas to 70% of the window's innerWidth while preserving aspect ratio.
+  const scale = maxCanvasWidth / canvas.width;
+  const desiredHeight = canvas.height * scale;
+  const resizedCanvas = document.createElement('canvas');
+  resizedCanvas.width = maxCanvasWidth;
+  resizedCanvas.height = desiredHeight;
+  const resizedCtx = resizedCanvas.getContext('2d')!;
+  resizedCtx.drawImage(canvas, 0, 0, maxCanvasWidth, desiredHeight);
+  console.log(
+    `Resized satellite image to ${maxCanvasWidth} x ${desiredHeight}`
+  );
+  return resizedCanvas;
+};
+
 /**
  * Load DEM data from a TIFF file using GeoTIFF.
  * Also reads the bounding box from metadata.
@@ -40,6 +59,7 @@ export const loadDEMData = async (url: string): Promise<DEMResponse> => {
     const height = image.getHeight();
     const rasterData = await image.readRasters({ interleave: true });
     const [min, max, elevations] = minMaxFromRaster(rasterData);
+    console.log('Min elevation:', min);
     const factor = (max - min) / maxElevation;
     console.log(`DEM loaded with dimensions: ${width} x ${height}`);
     return {
@@ -62,7 +82,6 @@ export const loadDEMData = async (url: string): Promise<DEMResponse> => {
 export const loadSatelliteCanvas = async (
   url: string
 ): Promise<HTMLCanvasElement> => {
-  const maxCanvasWidth = window.innerWidth * maxSatelliteImage;
   console.log(`Loading satellite image from ${url}...`);
   try {
     const image = await loadTiff(url);
@@ -99,17 +118,7 @@ export const loadSatelliteCanvas = async (
     ctx.putImageData(imageData, 0, 0);
     console.log('Satellite image processed into canvas.');
 
-    // Resize the canvas to 70% of the window's innerWidth while preserving aspect ratio.
-    const scale = maxCanvasWidth / canvas.width;
-    const desiredHeight = canvas.height * scale;
-    const resizedCanvas = document.createElement('canvas');
-    resizedCanvas.width = maxCanvasWidth;
-    resizedCanvas.height = desiredHeight;
-    const resizedCtx = resizedCanvas.getContext('2d')!;
-    resizedCtx.drawImage(canvas, 0, 0, maxCanvasWidth, desiredHeight);
-    console.log(
-      `Resized satellite image to ${maxCanvasWidth} x ${desiredHeight}`
-    );
+    // canvas = resizeCanvas(canvas);
 
     // Optionally, attach the resized canvas to the DOM for debugging.
     // addImageToDom(resizedCanvas);
