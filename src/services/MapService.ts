@@ -139,37 +139,34 @@ export class MapService {
     );
 
     // Create positions and UVs.
-    for (let h = 0; h < height; h++) {
-      for (let w = 0; w < width; w++) {
+    for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
         // Calculate the local X and Z coordinates based on the grid position.
-        const localX = minX + w * dx;
-        const localZ = minY + h * dy;
+        const localX = minX + col * dx;
+        const localZ = minY + row * dy;
         // Get the elevation value from the DEM data.
-        const elevation = elevations[h * width + w];
+        const elevation = elevations[row * width + col];
         // Add the vertex position to the position array.
         positions.push(localX, elevation, localZ);
 
         // Normalize UV coordinates to the range [0, 1].
-        const u = w / (width - 1);
-        const v = 1 - h / (height - 1);
+        const u = col / (width - 1);
+        const v = 1 - row / (height - 1);
         uvs.push(u, v);
+
+        if (row < height - 1 && col < width - 1) {
+          // Calculate the indices of the four corners of the current grid cell.
+          const a = row * width + col;
+          const b = row * width + col + 1;
+          const c = (row + 1) * width + col;
+          const d = (row + 1) * width + col + 1;
+          // Create two triangles for the current grid cell.
+          indices.push(a, c, b);
+          indices.push(b, c, d);
+        }
       }
     }
     console.log('Total vertices:', positions.length / 3);
-
-    // Build indices for triangles.
-    for (let h = 0; h < height - 1; h++) {
-      for (let w = 0; w < width - 1; w++) {
-        // Calculate the indices of the four corners of the current grid cell.
-        const a = h * width + w;
-        const b = h * width + w + 1;
-        const c = (h + 1) * width + w;
-        const d = (h + 1) * width + w + 1;
-        // Create two triangles for the current grid cell.
-        indices.push(a, c, b);
-        indices.push(b, c, d);
-      }
-    }
     console.log('Total triangles:', indices.length / 3);
 
     // Create a BufferGeometry object and set its attributes.
