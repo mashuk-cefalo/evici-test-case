@@ -15,6 +15,14 @@ import {
 import { OrbitControls } from 'three-stdlib';
 import { DEMResponse } from '../utility/types';
 
+/**
+ * Service class for managing the Three.js scene and rendering the terrain mesh.
+ * The class constructor initializes the Three.js scene, camera, renderer, and controls.
+ * The renderMesh method creates a terrain mesh from the provided DEM data and satellite image.
+ * The constructor inputs the ID of the container element where the renderer will be appended.
+ * The renderMesh method takes the DEM data and satellite image canvas as input.
+ */
+
 export class MapService {
   mapContainer: string; // ID of the container element.
   scene!: Scene;
