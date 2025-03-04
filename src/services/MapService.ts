@@ -131,8 +131,10 @@ export class MapService {
     const uvs: number[] = [];
     const indices: number[] = [];
 
-    const dx = (maxX - minX) / (width - 1);
-    const dy = (maxY - minY) / (height - 1);
+    // Optional: additional U offset (tweak this value until things align).
+    const uOffset = 0.035; // This shifts texture mapping by x%
+    const dx = (maxX - minX) / width;
+    const dy = (maxY - minY) / height;
 
     console.log(
       `Using local rectangle: [${minX}, ${minY}, ${maxX}, ${maxY}]. Grid dimensions: ${width} x ${height}, dx: ${dx}, dy: ${dy}`
@@ -149,24 +151,25 @@ export class MapService {
         // Add the vertex position to the position array.
         positions.push(localX, elevation, localZ);
 
-        // Normalize UV coordinates to the range [0, 1].
-        const u = col / (width - 1);
-        const v = 1 - row / (height - 1);
+        // Compute texture coordinates with half-cell offset plus an adjustable offset.
+        const u = ((col + 0.5) / width + uOffset) % 1;
+        const v = 1 - (row + 0.5) / height;
         uvs.push(u, v);
-
-        if (row < height - 1 && col < width - 1) {
-          // Calculate the indices of the four corners of the current grid cell.
-          const a = row * width + col;
-          const b = row * width + col + 1;
-          const c = (row + 1) * width + col;
-          const d = (row + 1) * width + col + 1;
-          // Create two triangles for the current grid cell.
-          indices.push(a, c, b);
-          indices.push(b, c, d);
-        }
       }
     }
     console.log('Total vertices:', positions.length / 3);
+
+    // Build indices for triangles.
+    for (let row = 0; row < height - 1; row++) {
+      for (let col = 0; col < width - 1; col++) {
+        const a = row * width + col;
+        const b = row * width + col + 1;
+        const c = (row + 1) * width + col;
+        const d = (row + 1) * width + col + 1;
+        indices.push(a, c, b);
+        indices.push(b, c, d);
+      }
+    }
     console.log('Total triangles:', indices.length / 3);
 
     // Create a BufferGeometry object and set its attributes.

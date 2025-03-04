@@ -59,9 +59,10 @@ export const loadDEMData = async (url: string): Promise<DEMResponse> => {
     const height = image.getHeight();
     const rasterData = await image.readRasters({ interleave: true });
     const [min, max, elevations] = minMaxFromRaster(rasterData);
-    console.log('Min elevation:', min);
     const factor = (max - min) / maxElevation;
-    console.log(`DEM loaded with dimensions: ${width} x ${height}`);
+    console.log(
+      `Elevation min: ${min}, max:${max}, factor: ${factor}; DEM loaded with dimensions: ${width} x ${height}`
+    );
     return {
       elevations: elevations.map((elevation) => (elevation - min) / factor), // normalize elevation between 0 and maxElevation
       width,
