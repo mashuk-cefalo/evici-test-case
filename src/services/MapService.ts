@@ -132,7 +132,7 @@ export class MapService {
     const indices: number[] = [];
 
     // Optional: additional U offset (tweak this value until things align).
-    const uOffset = 0.035; // This shifts texture mapping by x%
+    const uOffset = 0.025; // This shifts texture mapping by x%
     const dx = (maxX - minX) / width;
     const dy = (maxY - minY) / height;
 
