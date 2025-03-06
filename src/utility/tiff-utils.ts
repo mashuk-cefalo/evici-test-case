@@ -106,10 +106,17 @@ export const loadSatelliteCanvas = async (
     const ctx = canvas.getContext('2d')!;
     const imageData = ctx.createImageData(width, height);
 
+    const normalize = (value: number, min: number, max: number) => {
+      const gamma = 0.9; // Adjust gamma as needed.
+      const normalized = (value - min) / (max - min);
+      const gammaCorrected = Math.pow(normalized, 1 / gamma);
+      return gammaCorrected * 255;
+    };
+
     for (let i = 0; i < width * height; i++) {
-      imageData.data[i * 4] = (red[i] - redMin) / redFactor;
-      imageData.data[i * 4 + 1] = (green[i] - greenMin) / greenFactor;
-      imageData.data[i * 4 + 2] = (blue[i] - blueMin) / blueFactor;
+      imageData.data[i * 4] = normalize(red[i], redMin, redMax);
+      imageData.data[i * 4 + 1] = normalize(green[i], greenMin, greenMax);
+      imageData.data[i * 4 + 2] = normalize(blue[i], blueMin, blueMax);
       imageData.data[i * 4 + 3] = 255;
     }
 

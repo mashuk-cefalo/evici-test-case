@@ -93,8 +93,7 @@ export class MapService {
   }
 
   addLights(): void {
-    // // Add ambient light only.
-    const ambientLight = new AmbientLight(0xffffff, 5.0);
+    const ambientLight = new AmbientLight(0xffffff, 25.0);
     this.scene.add(ambientLight);
     console.log('Ambient light added to scene.');
   }
