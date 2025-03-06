@@ -8,7 +8,6 @@ import {
   MOUSE,
   PerspectiveCamera,
   Scene,
-  Texture,
   Vector3,
   WebGLRenderer,
 } from 'three';
@@ -120,39 +119,35 @@ export class MapService {
 
   async renderMesh(
     DEMResponse: DEMResponse,
-    canvas: HTMLCanvasElement
+    satelliteCanvas: HTMLCanvasElement
   ): Promise<void> {
     const { elevations, width, height, rectangle } = DEMResponse;
     const { minX, maxX, minY, maxY } = rectangle;
 
     console.log('Creating terrain mesh from DEM data...');
-    // Create positions, UVs, and indices for the terrain mesh.
+    // Create arrays for positions, UVs, and indices.
     const positions: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
 
-    // Optional: additional U offset (tweak this value until things align).
-    const uOffset = 0.025; // This shifts texture mapping by x%
-    const dx = (maxX - minX) / width;
-    const dy = (maxY - minY) / height;
+    const dx = (maxX - minX) / (width - 1);
+    const dy = (maxY - minY) / (height - 1);
 
     console.log(
-      `Using local rectangle: [${minX}, ${minY}, ${maxX}, ${maxY}]. Grid dimensions: ${width} x ${height}, dx: ${dx}, dy: ${dy}`
+      `Using rectangle: [${minX}, ${minY}, ${maxX}, ${maxY}]. ` +
+        `Grid dimensions: ${width} x ${height}, dx: ${dx}, dy: ${dy}`
     );
 
     // Create positions and UVs.
     for (let row = 0; row < height; row++) {
       for (let col = 0; col < width; col++) {
-        // Calculate the local X and Z coordinates based on the grid position.
         const localX = minX + col * dx;
         const localZ = minY + row * dy;
-        // Get the elevation value from the DEM data.
         const elevation = elevations[row * width + col];
-        // Add the vertex position to the position array.
         positions.push(localX, elevation, localZ);
 
-        // Compute texture coordinates with half-cell offset plus an adjustable offset.
-        const u = ((col + 0.5) / width + uOffset) % 1;
+        // Standard UV mapping from 0 to 1.
+        const u = (col + 0.5) / width;
         const v = 1 - (row + 0.5) / height;
         uvs.push(u, v);
       }
@@ -172,22 +167,45 @@ export class MapService {
     }
     console.log('Total triangles:', indices.length / 3);
 
-    // Create a BufferGeometry object and set its attributes.
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
     geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
-    // Create a texture from the provided satellite canvas.
-    const texture = new CanvasTexture(canvas);
+    // --- Create a new canvas for the texture ---
+    // The new canvas size matches the DEM grid (width x height) in terms of texture mapping.
+    const newCanvas = document.createElement('canvas');
+    newCanvas.width = width;
+    newCanvas.height = height;
+    const newCtx = newCanvas.getContext('2d')!;
+    // Clear the canvas (it will be transparent by default).
+    newCtx.clearRect(0, 0, newCanvas.width, newCanvas.height);
+    // Compute offsets to center the satellite image.
+    const offsetX = (width - satelliteCanvas.width) / 2;
+    const offsetY = (height - satelliteCanvas.height) / 2;
+    // Draw the satellite image onto the new canvas at the computed offset.
+    newCtx.drawImage(
+      satelliteCanvas,
+      offsetX,
+      offsetY,
+      satelliteCanvas.width,
+      satelliteCanvas.height
+    );
+    console.log(
+      `Satellite texture drawn on new canvas at offset (${offsetX}, ${offsetY}).`
+    );
+
+    // Create a texture from the new canvas.
+    const texture = new CanvasTexture(newCanvas);
     texture.needsUpdate = true;
 
-    // Create a MeshLambertMaterial with the texture.
-    const material = new MeshLambertMaterial({ map: texture });
-    console.log('Material created with satellite texture.');
+    const material = new MeshLambertMaterial({
+      map: texture,
+      transparent: true,
+    });
+    console.log('Material created with centered satellite texture.');
 
-    // Create a MeshLambertMaterial with the texture.
     this.mesh = new Mesh(geometry, material);
     this.scene.add(this.mesh);
     console.log('Terrain mesh added to scene.');

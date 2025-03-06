@@ -113,9 +113,9 @@ export const loadSatelliteCanvas = async (
       imageData.data[i * 4 + 3] = 255;
     }
 
-    console.log('Red min/max:', redMin, redMax);
-    console.log('Green min/max:', greenMin, greenMax);
-    console.log('Blue min/max:', blueMin, blueMax);
+    console.log('Red min/max:', redMin, redMax, redFactor);
+    console.log('Green min/max:', greenMin, greenMax, greenFactor);
+    console.log('Blue min/max:', blueMin, blueMax, blueFactor);
     ctx.putImageData(imageData, 0, 0);
     console.log('Satellite image processed into canvas.');
 
