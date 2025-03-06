@@ -4,12 +4,14 @@ export const minMaxFromRaster = (raster: any): [number, number, number[]] => {
   if (raster?.length === 0) {
     return [0, 0, []];
   }
+  let min = raster[0];
+  let max = raster[0];
   const data: number[] = [];
   for (let i = 0; i < raster.length; i++) {
+    min = Math.min(min, raster[i]);
+    max = Math.max(max, raster[i]);
     data.push(raster[i]);
   }
-  const min = Math.min(...data);
-  const max = Math.max(...data);
   return [min, max, data];
 };
 
