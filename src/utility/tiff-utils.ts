@@ -126,10 +126,10 @@ export const loadSatelliteCanvas = async (
     ctx.putImageData(imageData, 0, 0);
     console.log('Satellite image processed into canvas.');
 
-    // canvas = resizeCanvas(canvas);
+    // return resizeCanvas(canvas);
 
     // Optionally, attach the resized canvas to the DOM for debugging.
-    // addImageToDom(resizedCanvas);
+    // addImageToDom(canvas);
 
     return canvas;
   } catch (error) {
