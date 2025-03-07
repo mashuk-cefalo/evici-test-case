@@ -3,6 +3,8 @@ export interface DEMResponse {
   width: number;
   height: number;
   rectangle: Rectangle;
+  minElevation: number;
+  maxElevation: number;
 }
 
 export interface Rectangle {
@@ -10,4 +12,12 @@ export interface Rectangle {
   maxX: number;
   minY: number;
   maxY: number;
+}
+
+export interface Marker {
+  x: number;
+  y: number;
+  z: number;
+  color: string;
+  text: string;
 }

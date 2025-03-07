@@ -68,6 +68,8 @@ export const loadDEMData = async (url: string): Promise<DEMResponse> => {
       width,
       height,
       rectangle: getRectangleFromBox(image.getBoundingBox()),
+      minElevation: 0,
+      maxElevation: (max - min) / factor,
     };
   } catch (error) {
     console.error('Error loading DEM:', error);

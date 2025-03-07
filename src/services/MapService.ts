@@ -7,12 +7,15 @@ import {
   MeshLambertMaterial,
   MOUSE,
   PerspectiveCamera,
+  Raycaster,
   Scene,
+  Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three-stdlib';
-import { DEMResponse } from '../utility/types';
+import { DEMResponse, Marker } from '../utility/types';
+import { MarkerService } from './MarkerService';
 
 /**
  * Service class for managing the Three.js scene and rendering the terrain mesh.
@@ -30,12 +33,33 @@ export class MapService {
   mesh?: Mesh;
   controls!: OrbitControls;
   animationId: number = 0;
+  raycaster: Raycaster = new Raycaster();
+  mouse: Vector2 = new Vector2();
+
+  // We'll assume the DEM rectangle used to build the mesh:
+  rectangle: { minX: number; maxX: number; minY: number; maxY: number } = {
+    minX: 0,
+    maxX: 100,
+    minY: 0,
+    maxY: 100,
+  };
+
+  markers: Marker[] = [
+    {
+      x: 0.5574,
+      y: 0.0395,
+      z: 0.579,
+      color: 'red',
+      text: 'Sample playground',
+    },
+  ];
 
   constructor(mapContainer: string) {
     this.mapContainer = mapContainer;
     this.initThree();
     this.addLights();
     this.addControls();
+    // this.addClickListener();
     console.log('Three.js scene initialization complete.');
     this.animate();
   }
@@ -116,11 +140,50 @@ export class MapService {
     console.log('OrbitControls initialized.');
   }
 
+  addClickListener(): void {
+    // Add a click event listener to the renderer's DOM element.
+    this.renderer.domElement.addEventListener('click', (event) =>
+      this.onClick(event)
+    );
+  }
+
+  onClick(event: MouseEvent): void {
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    // Update the raycaster with the camera and mouse position.
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    // Check for intersections with the terrain mesh.
+    const intersects = this.raycaster.intersectObject(this.mesh!);
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+      console.log('Intersection point (world coordinates):', point);
+      // Convert to percentage relative to the DEM rectangle.
+      const percX =
+        ((point.x - this.rectangle.minX) /
+          (this.rectangle.maxX - this.rectangle.minX)) *
+        100;
+      const percZ =
+        ((point.z - this.rectangle.minY) /
+          (this.rectangle.maxY - this.rectangle.minY)) *
+        100;
+      console.log(
+        `Intersection as percentage: x: ${percX.toFixed(
+          2
+        )}%, y: ${point.y.toFixed(2)}, z: ${percZ.toFixed(2)}%`
+      );
+    }
+  }
+
   async renderMesh(
     DEMResponse: DEMResponse,
     satelliteCanvas: HTMLCanvasElement
   ): Promise<void> {
-    const { elevations, width, height, rectangle } = DEMResponse;
+    const { elevations, width, height, rectangle, minElevation, maxElevation } =
+      DEMResponse;
+    this.rectangle = rectangle;
     const { minX, maxX, minY, maxY } = rectangle;
 
     console.log('Creating terrain mesh from DEM data...');
@@ -208,5 +271,16 @@ export class MapService {
     this.mesh = new Mesh(geometry, material);
     this.scene.add(this.mesh);
     console.log('Terrain mesh added to scene.');
+
+    const markerService = new MarkerService(
+      this.scene,
+      this.camera,
+      this.renderer,
+      rectangle,
+      { min: minElevation, max: maxElevation }
+    );
+    this.markers.forEach(
+      async (marker) => await markerService.addMarker(marker)
+    );
   }
 }
