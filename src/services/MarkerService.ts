@@ -1,5 +1,4 @@
 import {
-  CanvasTexture,
   Object3D,
   PerspectiveCamera,
   Raycaster,
@@ -64,8 +63,6 @@ export class MarkerService {
 
     const position = new Vector3(marker.x, marker.z, marker.y);
     const markerMesh = await this.createMarkerSprite(marker.color);
-    console.log('Marker mesh:', markerMesh?.position);
-    console.log(' position:', position);
     markerMesh.position.copy(position);
 
     // Save marker text in userData for later use.
@@ -89,28 +86,20 @@ export class MarkerService {
     });
 
     // 5. Create a sprite from the texture.
-    const material = new SpriteMaterial({
-      map: texture,
-      transparent: true,
-    });
+    const material = new SpriteMaterial({ map: texture, transparent: true });
     const sprite = new Sprite(material);
     sprite.scale.set(3, 3, 3);
     return sprite;
   }
 
-  /**
-   * Attaches a click listener to the renderer DOM element.
-   */
+  // Attaches a click listener to the renderer DOM element.
   addClickListener(): void {
     this.renderer.domElement.addEventListener('click', (event) =>
       this.onClick(event)
     );
   }
 
-  /**
-   * Handles click events: uses a Raycaster to detect if a marker was clicked.
-   * If so, shows a label above the marker.
-   */
+  // If so, shows a label above the marker.
   onClick(event: MouseEvent): void {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const mouse = new Vector2();
@@ -126,60 +115,37 @@ export class MarkerService {
     }
   }
 
-  /**
-   * Creates and shows a label above the clicked marker.
-   */
   showLabel(markerObj: Object3D): void {
-    // Remove an existing label if present.
-    if (markerObj.userData['label']) {
-      this.scene.remove(markerObj.userData['label']);
-    }
-    const text = markerObj.userData['text'] || '';
-    const color = markerObj.userData['color'] || 'black';
-    const label = this.createLabelSprite(text, color);
-    // Position the label 2 units above the marker.
-    label.position.copy(markerObj.position).add(new Vector3(0, 2, 0));
-    this.scene.add(label);
-    markerObj.userData['label'] = label;
-    // Remove the label after 3 seconds.
-    setTimeout(() => {
-      this.scene.remove(label);
-      markerObj.userData['label'] = null;
-    }, 3000);
-  }
+    const text = markerObj.userData['text'];
+    const color = markerObj.userData['color'];
+    const labelDiv = document.createElement('div');
+    labelDiv.innerText = text;
+    labelDiv.style.position = 'absolute';
+    labelDiv.style.background = color;
+    labelDiv.style.color = 'white';
+    labelDiv.style.padding = '10px';
+    labelDiv.style.border = '1px solid white';
 
-  /**
-   * Creates a label sprite (a small box with text).
-   */
-  createLabelSprite(text: string, color: string): Sprite {
-    const lines = text.split('\n').map((line) => line.trim());
-    const canvas = document.createElement('canvas');
-    const lineHeight = 16;
+    document.body.appendChild(labelDiv);
 
-    canvas.height = lineHeight * lines.length + 10;
-    canvas.width = 256;
-    console.log('Label canvas size:', canvas.width, canvas.height);
-    const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Draw a background box.
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Draw border.
-    ctx.strokeStyle = 'white';
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
-    ctx.font = `${lineHeight - 4}px`;
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // Convert marker 3D position to 2D screen coords.
+    const vector = markerObj.position.clone();
+    vector.project(this.camera); // project to normalized device coordinates
 
-    let y = 2;
-    for (const line of lines) {
-      ctx.fillText(line, canvas.width / 2, y);
-      y += lineHeight;
-    }
-    const texture = new CanvasTexture(canvas);
-    const material = new SpriteMaterial({ map: texture, transparent: true });
-    const sprite = new Sprite(material);
-    return sprite;
+    // Map NDC to screen coords
+    const halfWidth = this.renderer.domElement.clientWidth / 2;
+    const halfHeight = this.renderer.domElement.clientHeight / 2;
+
+    const screenX = vector.x * halfWidth + halfWidth;
+    const screenY = -vector.y * halfHeight + halfHeight;
+
+    // Position the div
+    // Adjust for the renderer's DOM element offset if needed.
+    const canvasRect = this.renderer.domElement.getBoundingClientRect();
+    labelDiv.style.left = canvasRect.left + screenX + 'px';
+    labelDiv.style.top = canvasRect.top + screenY + 'px';
+
+    // Remove after 3s
+    setTimeout(() => document.body.removeChild(labelDiv), 3000);
   }
 }
