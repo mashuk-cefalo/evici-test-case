@@ -1,8 +1,5 @@
 import {
   CanvasTexture,
-  ConeGeometry,
-  Mesh,
-  MeshLambertMaterial,
   Object3D,
   PerspectiveCamera,
   Raycaster,
@@ -29,22 +26,18 @@ export class MarkerService {
   // For computing world positions:
   // worldRectangle defines the DEM’s horizontal extents.
   rectangle: Rectangle;
-  // demRange gives the minimum and maximum elevation.
-  demRange: { min: number; max: number };
   svgIcon!: string;
 
   constructor(
     scene: Scene,
     camera: PerspectiveCamera,
     renderer: WebGLRenderer,
-    rectangle: Rectangle,
-    demRange: { min: number; max: number }
+    rectangle: Rectangle
   ) {
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
     this.rectangle = rectangle;
-    this.demRange = demRange;
 
     this.addClickListener();
   }
@@ -68,20 +61,11 @@ export class MarkerService {
    */
   async addMarker(marker: Marker): Promise<void> {
     console.log('Adding marker:', marker);
-    // Convert normalized coordinates to world coordinates.
-    const worldX =
-      this.rectangle.minX +
-      marker.x * (this.rectangle.maxX - this.rectangle.minX);
-    const worldZ =
-      this.rectangle.minY +
-      marker.z * (this.rectangle.maxY - this.rectangle.minY);
-    const worldY =
-      this.demRange.min +
-      (marker.y - 0) * (this.demRange.max - this.demRange.min) +
-      5; // offset by 5 units above the terrain
 
-    const position = new Vector3(worldX, worldY, worldZ);
+    const position = new Vector3(marker.x, marker.z, marker.y);
     const markerMesh = await this.createMarkerSprite(marker.color);
+    console.log('Marker mesh:', markerMesh?.position);
+    console.log(' position:', position);
     markerMesh.position.copy(position);
 
     // Save marker text in userData for later use.
@@ -110,7 +94,7 @@ export class MarkerService {
       transparent: true,
     });
     const sprite = new Sprite(material);
-    sprite.scale.set(2, 2, 2);
+    sprite.scale.set(3, 3, 3);
     return sprite;
   }
 

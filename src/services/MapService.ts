@@ -14,8 +14,9 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three-stdlib';
-import { DEMResponse, Marker } from '../utility/types';
+import { DEMResponse } from '../utility/types';
 import { MarkerService } from './MarkerService';
+import { sampleMarkers } from '../../environment';
 
 /**
  * Service class for managing the Three.js scene and rendering the terrain mesh.
@@ -44,15 +45,7 @@ export class MapService {
     maxY: 100,
   };
 
-  markers: Marker[] = [
-    {
-      x: 0.5574,
-      y: 0.0395,
-      z: 0.579,
-      color: 'red',
-      text: 'Sample playground',
-    },
-  ];
+  markers = sampleMarkers;
 
   constructor(mapContainer: string) {
     this.mapContainer = mapContainer;
@@ -60,6 +53,7 @@ export class MapService {
     this.addLights();
     this.addControls();
     // this.addClickListener();
+
     console.log('Three.js scene initialization complete.');
     this.animate();
   }
@@ -181,8 +175,7 @@ export class MapService {
     DEMResponse: DEMResponse,
     satelliteCanvas: HTMLCanvasElement
   ): Promise<void> {
-    const { elevations, width, height, rectangle, minElevation, maxElevation } =
-      DEMResponse;
+    const { elevations, width, height, rectangle } = DEMResponse;
     this.rectangle = rectangle;
     const { minX, maxX, minY, maxY } = rectangle;
 
@@ -276,8 +269,7 @@ export class MapService {
       this.scene,
       this.camera,
       this.renderer,
-      rectangle,
-      { min: minElevation, max: maxElevation }
+      rectangle
     );
     this.markers.forEach(
       async (marker) => await markerService.addMarker(marker)
