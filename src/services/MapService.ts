@@ -17,6 +17,7 @@ import { OrbitControls } from 'three-stdlib';
 import { DEMResponse } from '../utility/types';
 import { MarkerService } from './MarkerService';
 import { sampleMarkers } from '../../environment';
+import { convertToPercentage } from '../utility/utils';
 
 /**
  * Service class for managing the Three.js scene and rendering the terrain mesh.
@@ -38,13 +39,8 @@ export class MapService {
   mouse: Vector2 = new Vector2();
 
   markerService!: MarkerService;
-  // We'll assume the DEM rectangle used to build the mesh:
-  rectangle: { minX: number; maxX: number; minY: number; maxY: number } = {
-    minX: 0,
-    maxX: 100,
-    minY: 0,
-    maxY: 100,
-  };
+
+  elevationResponse!: DEMResponse;
 
   markers = sampleMarkers;
 
@@ -155,21 +151,19 @@ export class MapService {
     const intersects = this.raycaster.intersectObject(this.mesh!);
     if (intersects.length > 0) {
       const point = intersects[0].point;
+
       console.log('Intersection point (world coordinates):', point);
-      // Convert to percentage relative to the DEM rectangle.
-      const percX =
-        ((point.x - this.rectangle.minX) /
-          (this.rectangle.maxX - this.rectangle.minX)) *
-        100;
-      const percZ =
-        ((point.z - this.rectangle.minY) /
-          (this.rectangle.maxY - this.rectangle.minY)) *
-        100;
-      console.log(
-        `Intersection as percentage: x: ${percX.toFixed(
-          2
-        )}%, y: ${point.y.toFixed(2)}, z: ${percZ.toFixed(2)}%`
+
+      const percentagePoint = convertToPercentage(
+        point,
+        this.elevationResponse
       );
+      console.log('Intersection as percentage: ', percentagePoint);
+
+      this.markers.forEach((marker) => {
+        const p = convertToPercentage(marker, this.elevationResponse);
+        console.log('marker', marker, p);
+      });
     }
   }
 
@@ -178,7 +172,7 @@ export class MapService {
     satelliteCanvas: HTMLCanvasElement
   ): Promise<void> {
     const { elevations, width, height, rectangle } = DEMResponse;
-    this.rectangle = rectangle;
+    this.elevationResponse = DEMResponse;
     const { minX, maxX, minY, maxY } = rectangle;
 
     console.log('Creating terrain mesh from DEM data...');
@@ -271,8 +265,9 @@ export class MapService {
       this.scene,
       this.camera,
       this.renderer,
-      rectangle
+      DEMResponse
     );
+
     this.markers.forEach(
       async (marker) => await this.markerService.addMarker(marker)
     );

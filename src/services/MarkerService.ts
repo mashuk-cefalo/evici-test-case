@@ -11,7 +11,8 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { Marker, Rectangle } from '../utility/types';
+import { DEMResponse, Marker } from '../utility/types';
+import { convertPercentageToPosition } from '../utility/utils';
 
 export class MarkerService {
   // We assume these are provided (for example, from your MapService):
@@ -23,20 +24,19 @@ export class MarkerService {
   markers: Sprite[] = [];
 
   // For computing world positions:
-  // worldRectangle defines the DEM’s horizontal extents.
-  rectangle: Rectangle;
+  demResponse: DEMResponse;
   svgIcon!: string;
 
   constructor(
     scene: Scene,
     camera: PerspectiveCamera,
     renderer: WebGLRenderer,
-    rectangle: Rectangle
+    demResponse: DEMResponse
   ) {
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
-    this.rectangle = rectangle;
+    this.demResponse = demResponse;
 
     this.addClickListener();
   }
@@ -50,7 +50,6 @@ export class MarkerService {
       throw new Error(`Failed to load SVG`);
     }
     this.svgIcon = await response.text();
-    console.log('Loaded SVG:', this.svgIcon);
     return this.svgIcon;
   }
 
@@ -59,11 +58,14 @@ export class MarkerService {
    * Marker coordinates (x, y, z) are normalized (0 to 1).
    */
   async addMarker(marker: Marker): Promise<void> {
-    console.log('Adding marker:', marker);
+    const position = new Vector3(marker.x, marker.y, marker.z);
+    const newPosition = convertPercentageToPosition(position, this.demResponse);
+    console.log('Adding marker:', marker, 'position:', newPosition);
 
-    const position = new Vector3(marker.x, marker.z, marker.y);
     const markerMesh = await this.createMarkerSprite(marker.color);
-    markerMesh.position.copy(position);
+    markerMesh.position.copy(
+      new Vector3(newPosition.x, newPosition.z, newPosition.y)
+    );
 
     // Save marker text in userData for later use.
     markerMesh.userData = {

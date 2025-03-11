@@ -1,4 +1,6 @@
-import { Rectangle } from './types';
+import { Vector3 } from 'three';
+import { DEMResponse, Marker, Rectangle } from './types';
+import { maxElevation as highElevation } from '../../environment';
 
 export const minMaxFromRaster = (raster: any): [number, number, number[]] => {
   if (raster?.length === 0) {
@@ -48,4 +50,35 @@ export const getRectangleFromBox = (box: number[]): Rectangle => {
   const rectangle = { minX, maxX, minY, maxY };
   console.log('Computed DEM extent (local coordinates):', rectangle);
   return rectangle;
+};
+
+export const convertToPercentage = (
+  point: Vector3 | Marker,
+  elevationResponse: DEMResponse
+): Vector3 => {
+  const { minElevation, maxElevation, rectangle } = elevationResponse;
+  const { minX, maxX, minY, maxY } = rectangle;
+
+  const percentagePoint: Vector3 = new Vector3();
+  percentagePoint.x = ((point.x - minX) / (maxX - minX)) * 100;
+  percentagePoint.y = ((point.y - minY) / (maxY - minY)) * 100;
+  percentagePoint.z =
+    ((point.z - minElevation) / (maxElevation - minElevation)) * highElevation;
+  return percentagePoint;
+};
+
+export const convertPercentageToPosition = (
+  percentagePoint: Vector3 | Marker,
+  elevationResponse: DEMResponse
+): Vector3 => {
+  const { minElevation, maxElevation, rectangle } = elevationResponse;
+  const { minX, maxX, minY, maxY } = rectangle;
+
+  const position: Vector3 = new Vector3();
+  position.x = (percentagePoint.x / 100) * (maxX - minX) + minX;
+  position.y = (percentagePoint.y / 100) * (maxY - minY) + minY;
+  position.z =
+    (percentagePoint.z / highElevation) * (maxElevation - minElevation) +
+    minElevation;
+  return position;
 };
