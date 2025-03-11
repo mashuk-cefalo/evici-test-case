@@ -37,6 +37,7 @@ export class MapService {
   raycaster: Raycaster = new Raycaster();
   mouse: Vector2 = new Vector2();
 
+  markerService!: MarkerService;
   // We'll assume the DEM rectangle used to build the mesh:
   rectangle: { minX: number; maxX: number; minY: number; maxY: number } = {
     minX: 0,
@@ -85,6 +86,7 @@ export class MapService {
     this.animationId = requestAnimationFrame(() => this.animate());
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+    this.markerService?.animateMarkers();
   }
 
   initThree(): void {
@@ -265,14 +267,14 @@ export class MapService {
     this.scene.add(this.mesh);
     console.log('Terrain mesh added to scene.');
 
-    const markerService = new MarkerService(
+    this.markerService = new MarkerService(
       this.scene,
       this.camera,
       this.renderer,
       rectangle
     );
     this.markers.forEach(
-      async (marker) => await markerService.addMarker(marker)
+      async (marker) => await this.markerService.addMarker(marker)
     );
   }
 }

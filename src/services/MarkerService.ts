@@ -66,7 +66,12 @@ export class MarkerService {
     markerMesh.position.copy(position);
 
     // Save marker text in userData for later use.
-    markerMesh.userData = { text: marker.text, color: marker.color };
+    markerMesh.userData = {
+      text: marker.text,
+      color: marker.color,
+      baseY: 0,
+      clicked: false,
+    };
     this.scene.add(markerMesh);
     this.markers.push(markerMesh);
   }
@@ -116,6 +121,7 @@ export class MarkerService {
   }
 
   showLabel(markerObj: Object3D): void {
+    markerObj.userData['clicked'] = true;
     const text = markerObj.userData['text'];
     const color = markerObj.userData['color'];
     const labelDiv = document.createElement('div');
@@ -125,6 +131,8 @@ export class MarkerService {
     labelDiv.style.color = 'white';
     labelDiv.style.padding = '10px';
     labelDiv.style.border = '1px solid white';
+    labelDiv.style.borderRadius = '5px';
+    labelDiv.style.fontFamily = 'roboto';
 
     document.body.appendChild(labelDiv);
 
@@ -146,6 +154,27 @@ export class MarkerService {
     labelDiv.style.top = canvasRect.top + screenY + 'px';
 
     // Remove after 3s
-    setTimeout(() => document.body.removeChild(labelDiv), 3000);
+    setTimeout(() => {
+      document.body.removeChild(labelDiv);
+      markerObj.userData['clicked'] = false;
+    }, 3000);
+  }
+
+  animateMarkers(): void {
+    const time = Date.now() * 0.002;
+    // Assuming you keep track of all marker sprites in an array this.markers.
+    this.markers.forEach((sprite: Sprite) => {
+      // If baseY has not been set, initialize it.
+      if (sprite.userData['clicked']) {
+        return;
+      }
+      if (sprite.userData['baseY'] === 0) {
+        sprite.userData['baseY'] = sprite.position.y;
+      }
+      // Apply a jump effect: oscillate the y-position by 0.5 units.
+      sprite.position.y = sprite.userData['baseY'] + Math.sin(time * 2) * 0.5;
+      // Apply a small rotation to the sprite material.
+      //   sprite.material.rotation = Math.sin(time) * 0.2;
+    });
   }
 }
